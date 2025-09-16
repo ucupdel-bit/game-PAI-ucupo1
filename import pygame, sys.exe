@@ -1,0 +1,221 @@
+import pygame, sys
+
+pygame.init()
+WIDTH, HEIGHT = 900, 600
+FPS = 60
+SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Game PAI - Pilihan Ganda")
+
+# Warna
+WHITE=(255,255,255); BLACK=(0,0,0); SKY=(135,206,235)
+GROUND=(80,50,20); BLOCK=(200,170,50); BLOCK_DONE=(100,200,100); PLAYER=(220,50,50)
+
+FONT=pygame.font.SysFont("arial",20)
+BIG=pygame.font.SysFont("arial",28,bold=True)
+clock=pygame.time.Clock()
+
+# Soal Pilihan Ganda
+QUESTIONS=[
+ {"q":"Kitab suci umat Islam adalah ...",
+  "opts":["A. Injil","B. Taurat","C. Al-Qur'an","D. Zabur"],"ans":"C"},
+ {"q":"Nabi terakhir yang diutus Allah adalah ...",
+  "opts":["A. Musa","B. Isa","C. Ibrahim","D. Muhammad"],"ans":"D"},
+ {"q":"Rukun Islam pertama adalah ...",
+  "opts":["A. Shalat","B. Syahadat","C. Zakat","D. Haji"],"ans":"B"},
+ {"q":"Shalat Subuh jumlah rakaat ...",
+  "opts":["A. 2","B. 3","C. 4","D. 5"],"ans":"A"},
+ {"q":"Asmaul Husna 'Ar-Rahman' artinya ...",
+  "opts":["A. Maha Adil","B. Maha Penyayang","C. Maha Pengasih","D. Maha Bijaksana"],"ans":"C"},
+ {"q":"Hari raya umat Islam ada ...",
+  "opts":["A. 1","B. 2","C. 3","D. 4"],"ans":"B"},
+ {"q":"Shalat wajib sehari semalam ada ...",
+  "opts":["A. 3","B. 4","C. 5","D. 6"],"ans":"C"},
+ {"q":"Nama ayah Nabi Muhammad adalah ...",
+  "opts":["A. Abu Bakar","B. Abdullah","C. Abdul Muthalib","D. Umar"],"ans":"B"},
+ {"q":"Surat pertama dalam Al-Qur’an adalah ...",
+  "opts":["A. Al-Baqarah","B. Al-Ikhlas","C. Al-Fatihah","D. An-Nas"],"ans":"C"},
+ {"q":"Malaikat penyampai wahyu adalah ...",
+  "opts":["A. Mikail","B. Israfil","C. Jibril","D. Izrail"],"ans":"C"},
+ {"q":"Nabi yang ditelan ikan paus adalah ...",
+  "opts":["A. Nuh","B. Yunus","C. Yusuf","D. Daud"],"ans":"B"},
+ {"q":"Jumlah Asmaul Husna ada ...",
+  "opts":["A. 66","B. 77","C. 88","D. 99"],"ans":"D"},
+ {"q":"Rukun Islam kelima adalah ...",
+  "opts":["A. Puasa","B. Zakat","C. Haji","D. Syahadat"],"ans":"C"},
+ {"q":"Rukun iman ada ...",
+  "opts":["A. 4","B. 5","C. 6","D. 7"],"ans":"C"},
+ {"q":"Ucapan 'Assalamu’alaikum' artinya ...",
+  "opts":["A. Semoga sehat","B. Selamat pagi","C. Semoga keselamatan atasmu","D. Semoga panjang umur"],"ans":"C"},
+ {"q":"Orang yang berpuasa tidak boleh ...",
+  "opts":["A. Bekerja","B. Tidur","C. Makan & Minum","D. Belajar"],"ans":"C"},
+ {"q":"Tempat suci umat Islam untuk haji adalah ...",
+  "opts":["A. Madinah","B. Makkah","C. Palestina","D. Syam"],"ans":"B"},
+ {"q":"Nabi yang mendapat julukan Khalilullah adalah ...",
+  "opts":["A. Nuh","B. Ibrahim","C. Musa","D. Isa"],"ans":"B"},
+ {"q":"Shalat tarawih dilaksanakan pada bulan ...",
+  "opts":["A. Muharram","B. Ramadhan","C. Dzulhijjah","D. Syawal"],"ans":"B"},
+ {"q":"Lafaz syahadat ada ...",
+  "opts":["A. 1","B. 2","C. 3","D. 4"],"ans":"B"}
+]
+TOTAL=len(QUESTIONS)
+
+# Ground
+ground_rect=pygame.Rect(0,HEIGHT-80,WIDTH,80)
+
+class Player:
+    def __init__(self):
+        self.w,self.h=40,50
+        self.x,self.y=50,HEIGHT-80-50
+        self.vx,self.vy=0,0
+        self.speed=5; self.jump=-13
+        self.on_ground=False
+        self.rect=pygame.Rect(self.x,self.y,self.w,self.h)
+    def handle(self,keys):
+        self.vx=0
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]: self.vx=-self.speed
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]: self.vx=self.speed
+        if (keys[pygame.K_SPACE] or keys[pygame.K_w] or keys[pygame.K_UP]) and self.on_ground:
+            self.vy=self.jump; self.on_ground=False
+    def update(self):
+        self.vy+=0.8
+        self.x+=self.vx; self.rect.x=int(self.x)
+        if self.rect.left<0: self.rect.left=0; self.x=self.rect.x
+        if self.rect.right>WIDTH: self.rect.right=WIDTH; self.x=self.rect.x
+        self.y+=self.vy; self.rect.y=int(self.y)
+        self.on_ground=False
+        if self.rect.colliderect(ground_rect):
+            self.rect.bottom=ground_rect.top; self.y=self.rect.y; self.vy=0; self.on_ground=True
+    def draw(self,s): pygame.draw.rect(s,PLAYER,self.rect)
+
+class Block:
+    def __init__(self,x,y,i):
+        self.rect=pygame.Rect(x,y,48,48); self.index=i; self.done=False
+    def draw(self,s):
+        col=BLOCK_DONE if self.done else BLOCK
+        pygame.draw.rect(s,col,self.rect)
+        mark=BIG.render("?",True,BLACK)
+        s.blit(mark,(self.rect.centerx-mark.get_width()/2,self.rect.centery-mark.get_height()/2))
+
+player=Player()
+blocks=[Block(100+i*80,350-(i//10)*120,i) for i in range(TOTAL)]
+score=0; lives=3
+show=False; active=None; feedback=""; game_over=False
+show_menu=True  # Start screen
+restart_btn=None; quit_btn=None
+
+def ask(block):
+    global show,active,feedback
+    show=True; active=block; feedback=""
+
+def draw_modal(q,fb):
+    overlay=pygame.Surface((WIDTH,HEIGHT),pygame.SRCALPHA); overlay.fill((0,0,0,160))
+    SCREEN.blit(overlay,(0,0))
+    box=pygame.Rect(80,80,WIDTH-160,400)
+    pygame.draw.rect(SCREEN,WHITE,box); pygame.draw.rect(SCREEN,BLACK,box,3)
+
+    # Soal
+    wrap=wrap_text(q["q"],BIG,box.w-40)
+    for i,line in enumerate(wrap):
+        SCREEN.blit(BIG.render(line,True,BLACK),(box.x+20,box.y+20+i*30))
+
+    # Opsi
+    for i,opt in enumerate(q["opts"]):
+        SCREEN.blit(FONT.render(opt,True,BLACK),(box.x+20,box.y+120+i*30))
+
+    if fb:
+        SCREEN.blit(FONT.render(fb,True,(200,0,0)),(box.x+20,box.y+280))
+
+    tip=FONT.render("Jawab dengan tekan A, B, C, atau D",True,BLACK)
+    SCREEN.blit(tip,(box.x+20,box.y+box.h-40))
+
+def wrap_text(text,font,maxw):
+    words=text.split(" "); lines=[]; cur=""
+    for w in words:
+        test=cur+(" " if cur else "")+w
+        if font.size(test)[0]<=maxw: cur=test
+        else: lines.append(cur); cur=w
+    if cur: lines.append(cur)
+    return lines
+
+def draw_button(text, x, y, w, h, color, text_color=BLACK):
+    rect = pygame.Rect(x, y, w, h)
+    pygame.draw.rect(SCREEN, color, rect, border_radius=10)
+    pygame.draw.rect(SCREEN, BLACK, rect, 2, border_radius=10)
+    label = BIG.render(text, True, text_color)
+    SCREEN.blit(label, (rect.centerx - label.get_width()//2, rect.centery - label.get_height()//2))
+    return rect
+
+running=True
+while running:
+    dt=clock.tick(FPS)
+    keys=pygame.key.get_pressed()
+    for e in pygame.event.get():
+        if e.type==pygame.QUIT: running=False
+        if show_menu and e.type==pygame.KEYDOWN and e.key==pygame.K_RETURN:
+            show_menu=False
+        if show and e.type==pygame.KEYDOWN and active:
+            key=pygame.key.name(e.key).upper()
+            if key in ["A","B","C","D"]:
+                if key==QUESTIONS[active.index]["ans"]:
+                    active.done=True; score+=1; show=False; active=None
+                else:
+                    lives-=1; feedback="Salah!"
+                    if lives<=0: game_over=True; show=False
+        if game_over and e.type==pygame.MOUSEBUTTONDOWN:
+            mx,my=e.pos
+            if restart_btn and restart_btn.collidepoint(mx,my):
+                # reset semua variabel
+                player=Player()
+                blocks=[Block(100+i*80,350-(i//10)*120,i) for i in range(TOTAL)]
+                score=0; lives=3
+                game_over=False; show=False; active=None; feedback=""
+            if quit_btn and quit_btn.collidepoint(mx,my):
+                running=False
+
+    if show_menu:
+        SCREEN.fill(SKY)
+        title=BIG.render("Game PAI - Pilihan Ganda",True,BLACK)
+        SCREEN.blit(title,(WIDTH//2-title.get_width()//2,100))
+
+        guide1=FONT.render("Panduan Bermain:",True,BLACK)
+        guide2=FONT.render("- Gerak: A/D atau Panah Kiri/Kanan",True,BLACK)
+        guide3=FONT.render("- Lompat: SPASI atau Panah Atas",True,BLACK)
+        guide4=FONT.render("- Hantam blok untuk buka soal",True,BLACK)
+        guide5=FONT.render("- Jawab soal dengan tekan A, B, C, atau D",True,BLACK)
+        guide6=FONT.render("Tekan ENTER untuk mulai",True,(200,0,0))
+
+        SCREEN.blit(guide1,(300,200))
+        SCREEN.blit(guide2,(300,230))
+        SCREEN.blit(guide3,(300,260))
+        SCREEN.blit(guide4,(300,290))
+        SCREEN.blit(guide5,(300,320))
+        SCREEN.blit(guide6,(300,370))
+
+        pygame.display.flip()
+        continue
+
+    if not show and not game_over:
+        player.handle(keys); player.update()
+        for b in blocks:
+            if player.rect.colliderect(b.rect):
+                if player.vy<0 and player.rect.top<=b.rect.bottom and not b.done:
+                    ask(b)
+
+    SCREEN.fill(SKY)
+    pygame.draw.rect(SCREEN,GROUND,ground_rect)
+    for b in blocks: b.draw(SCREEN)
+    player.draw(SCREEN)
+    hud=FONT.render(f"Score: {score}/{TOTAL}   Nyawa: {lives}",True,BLACK)
+    SCREEN.blit(hud,(10,10))
+
+    restart_btn=quit_btn=None
+    if game_over:
+        txt=BIG.render("GAME OVER",True,(200,0,0))
+        SCREEN.blit(txt,(WIDTH//2-txt.get_width()//2,180))
+        restart_btn=draw_button("Restart", WIDTH//2-100, 280, 200, 50, (100,200,100))
+        quit_btn=draw_button("Keluar", WIDTH//2-100, 360, 200, 50, (200,100,100))
+
+    if show and active: draw_modal(QUESTIONS[active.index],feedback)
+    pygame.display.flip()
+
+pygame.quit(); sys.exit()
